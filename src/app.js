@@ -1,4 +1,5 @@
-const express = require('express');
+const express      = require('express');
+const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
@@ -19,14 +20,38 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: env.APP_URL || '*',
+    // Must be an explicit origin (not '*') for cookies to be sent cross-origin
+    origin: (origin, callback) => {
+      const baseOrigins = (env.CORS_ORIGINS || env.APP_URL || 'http://localhost:3000')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean);
+      
+      const allowed = [
+        ...baseOrigins,
+        'http://localhost:3000',
+        'https://localhost:3000',
+        'http://localhost:5173',
+        'https://localhost:5173'
+      ];
+      
+      // Allow requests with no origin (mobile apps, Postman, curl)
+      if (!origin || allowed.includes(origin) || allowed.includes('*')) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS: origin '${origin}' not allowed`));
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,  // Required for cookies to be sent cross-origin
   })
 );
 
 // ─── Performance ─────────────────────────────────────────────────────────────
 app.use(compression());
+
+// ─── Cookie Parser ───────────────────────────────────────────────────────────
+app.use(cookieParser(env.COOKIE_SECRET || 'cookie_secret_change_in_prod'));
 
 // ─── Body Parsing ────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '5mb' }));

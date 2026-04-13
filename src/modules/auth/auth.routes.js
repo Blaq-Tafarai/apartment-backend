@@ -126,7 +126,7 @@ router.post('/login', authLimiter, loginRules, validate, ctrl.login);
  *       401:
  *         description: Invalid or expired refresh token
  */
-router.post('/refresh', refreshRules, validate, ctrl.refresh);
+router.post('/refresh', ctrl.refresh); // No body validation — token comes from HTTP-only cookie (body is fallback only)
 
 // ─── Forgot Password OTP Flow (no auth required) ──────────────────────────────
 
@@ -290,7 +290,7 @@ router.post('/reset-password', authenticate, resetPasswordWithOtpRules, validate
  *       200:
  *         description: Logged out successfully
  */
-router.post('/logout', authenticate, ctrl.logout);
+router.post('/logout', ctrl.logout); // No auth required — reads refresh token from cookie to invalidate
 
 /**
  * @swagger

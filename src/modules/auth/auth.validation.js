@@ -13,7 +13,9 @@ const loginRules = [
 ];
 
 const refreshRules = [
-  body('refreshToken').notEmpty().withMessage('Refresh token is required.'),
+  // refreshToken in body is OPTIONAL — cookie-based clients send no body.
+  // API clients (Postman, mobile) can send it in the body as a fallback.
+  body('refreshToken').optional().isString().withMessage('Refresh token must be a string.'),
 ];
 
 const changePasswordRules = [
