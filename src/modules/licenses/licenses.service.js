@@ -8,8 +8,8 @@ const list = async (query) => {
   const where = { deletedAt: null };
   if (query.organizationId) where.organizationId = query.organizationId;
   const [data, total] = await Promise.all([
-    prisma.license.findMany({ where, skip, take, orderBy }),
-    prisma.license.count({ where }),
+    prisma.license.findMany({ where, skip, take, orderBy, include: { organization: true, subscription: true } }),
+    prisma.license.count({ where })
   ]);
   return buildPaginatedResponse(data, total, page, limit);
 };
@@ -33,3 +33,4 @@ const remove = async (id) => {
 };
 
 module.exports = { list, getById, create, update, remove };
+
