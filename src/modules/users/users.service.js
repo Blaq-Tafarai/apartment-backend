@@ -13,9 +13,16 @@ const { getPaginationArgs, buildPaginatedResponse, getOrderByArgs } = require('.
 const logger = require('../../config/logger');
 
 const SAFE_SELECT = {
-  id: true, name: true, email: true, role: true,
-  organizationId: true, status: true, mustChangePassword: true,
+  id: true, name: true, email: true, phone: true, role: true,
+  status: true, mustChangePassword: true,
   createdAt: true, updatedAt: true,
+  organization: {
+    select: {
+      id: true,
+      name: true,
+      phone: true
+    }
+  }
 };
 
 // ─── List ─────────────────────────────────────────────────────────────────────
@@ -60,7 +67,7 @@ const getById = async (id, orgFilter) => {
  * - NEVER accepts a password from the request body
  */
 const create = async (data, organizationId) => {
-  const { name, email, role } = data;
+const { name, email, phone, role } = data;
 
   const existing = await prisma.user.findFirst({ where: { email, deletedAt: null } });
   if (existing) throw new AppError('Email already in use.', 409, 'CONFLICT');
@@ -70,7 +77,7 @@ const create = async (data, organizationId) => {
 
   const user = await prisma.user.create({
     data: {
-      name, email, password: hashed,
+      name, email, ...(phone && { phone }), password: hashed,
       role: role || 'tenant',
       organizationId: data.organizationId || organizationId,
       mustChangePassword: true,
@@ -89,11 +96,12 @@ const create = async (data, organizationId) => {
 
 const update = async (id, data, orgFilter) => {
   await getById(id, orgFilter);
-  const { name, role, status } = data;
+const { name, phone, role, status } = data;
   return prisma.user.update({
     where: { id },
     data: {
       ...(name   && { name }),
+      ...(phone && { phone }),
       ...(role   && { role }),
       ...(status && { status }),
     },

@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const createRules = [
   body('name').trim().notEmpty().withMessage('Name is required.'),
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required.'),
+  body('phone').optional().isMobilePhone('any').withMessage('Valid phone number is required.'),
   // password is NOT accepted — it is auto-generated and emailed to the user
   body('role')
     .isIn(['admin', 'manager', 'tenant'])
@@ -11,6 +12,7 @@ const createRules = [
 
 const updateRules = [
   body('name').optional().trim().notEmpty().withMessage('Name cannot be empty.'),
+  body('phone').optional().isMobilePhone('any').withMessage('Valid phone number is required.'),
   body('role')
     .optional()
     .isIn(['admin', 'manager', 'tenant'])

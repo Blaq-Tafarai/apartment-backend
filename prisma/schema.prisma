@@ -7,9 +7,355 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─────────────────────────────────────────────
-// ENUMS
-// ─────────────────────────────────────────────
+model Organization {
+  id             String        @id @default(uuid())
+  name           String
+  status         OrgStatus     @default(active)
+  subscriptionId String?       @unique @map("subscription_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
+  phone          String?
+  apartments     Apartment[]
+  auditLogs      AuditLog[]
+  billings       Billing[]
+  buildings      Building[]
+  documents      Document[]
+  expenses       Expense[]
+  leases         Lease[]
+  licenses       License[]
+  maintenances   Maintenance[]
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  payments       Payment[]
+  tenants        Tenant[]
+  users          User[]
+
+  @@index([status])
+  @@index([deletedAt])
+  @@map("organizations")
+}
+
+model Subscription {
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  planName       String             @map("plan_name")
+  billingCycle   BillingCycle       @map("billing_cycle")
+  price          Decimal            @db.Decimal(10, 2)
+  startDate      DateTime           @map("start_date")
+  endDate        DateTime           @map("end_date")
+  status         SubscriptionStatus @default(active)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+  deletedAt      DateTime?          @map("deleted_at")
+  licenses       License[]
+  organization   Organization?
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model License {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  subscriptionId String       @map("subscription_id")
+  maxUsers       Int          @map("max_users")
+  maxBuildings   Int          @map("max_buildings")
+  maxApartments  Int          @map("max_apartments")
+  features       Json         @default("{}")
+  expiresAt      DateTime     @map("expires_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  deletedAt      DateTime?    @map("deleted_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([organizationId])
+  @@index([expiresAt])
+  @@map("licenses")
+}
+
+model User {
+  id                  String             @id @default(uuid())
+  name                String
+  email               String             @unique
+  password            String
+  role                UserRole           @default(tenant)
+  organizationId      String?            @map("organization_id")
+  status              UserStatus         @default(active)
+  refreshToken        String?            @map("refresh_token")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  deletedAt           DateTime?          @map("deleted_at")
+  mustChangePassword  Boolean            @default(false) @map("must_change_password")
+  phone               String?
+  auditLogs           AuditLog[]
+  uploadedDocuments   Document[]         @relation("UploadedBy")
+  assignedMaintenance Maintenance[]      @relation("AssignedManager")
+  managerBuildings    ManagerBuilding[]
+  passwordResetOtps   PasswordResetOtp[]
+  tenant              Tenant?
+  organization        Organization?      @relation(fields: [organizationId], references: [id])
+
+  @@index([email])
+  @@index([organizationId])
+  @@index([role])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model ManagerBuilding {
+  id         String   @id @default(uuid())
+  managerId  String   @map("manager_id")
+  buildingId String   @map("building_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  building   Building @relation(fields: [buildingId], references: [id])
+  manager    User     @relation(fields: [managerId], references: [id])
+
+  @@unique([managerId, buildingId])
+  @@index([managerId])
+  @@index([buildingId])
+  @@map("manager_buildings")
+}
+
+model Building {
+  id             String            @id @default(uuid())
+  name           String
+  address        String
+  organizationId String            @map("organization_id")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  deletedAt      DateTime?         @map("deleted_at")
+  apartments     Apartment[]
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  expenses       Expense[]
+  managers       ManagerBuilding[]
+
+  @@index([organizationId])
+  @@index([deletedAt])
+  @@map("buildings")
+}
+
+model Apartment {
+  id             String          @id @default(uuid())
+  unitNumber     String          @map("unit_number")
+  status         ApartmentStatus @default(available)
+  buildingId     String          @map("building_id")
+  organizationId String          @map("organization_id")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deletedAt      DateTime?       @map("deleted_at")
+  building       Building        @relation(fields: [buildingId], references: [id])
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  documents      Document[]
+  leases         Lease[]
+  maintenances   Maintenance[]
+  tenants        Tenant[]
+
+  @@index([buildingId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("apartments")
+}
+
+model Tenant {
+  id             String        @id @default(uuid())
+  userId         String        @unique @map("user_id")
+  apartmentId    String?       @map("apartment_id")
+  organizationId String        @map("organization_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
+  billings       Billing[]
+  documents      Document[]
+  leases         Lease[]
+  maintenances   Maintenance[]
+  apartment      Apartment?    @relation(fields: [apartmentId], references: [id])
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([apartmentId])
+  @@index([organizationId])
+  @@index([deletedAt])
+  @@map("tenants")
+}
+
+model Lease {
+  id             String       @id @default(uuid())
+  apartmentId    String       @map("apartment_id")
+  tenantId       String       @map("tenant_id")
+  startDate      DateTime     @map("start_date")
+  endDate        DateTime     @map("end_date")
+  rentAmount     Decimal      @map("rent_amount") @db.Decimal(10, 2)
+  status         LeaseStatus  @default(pending)
+  organizationId String       @map("organization_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  deletedAt      DateTime?    @map("deleted_at")
+  billings       Billing[]
+  apartment      Apartment    @relation(fields: [apartmentId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  tenant         Tenant       @relation(fields: [tenantId], references: [id])
+
+  @@index([apartmentId])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("leases")
+}
+
+model Billing {
+  id             String        @id @default(uuid())
+  tenantId       String        @map("tenant_id")
+  leaseId        String        @map("lease_id")
+  amount         Decimal       @db.Decimal(10, 2)
+  dueDate        DateTime      @map("due_date")
+  status         BillingStatus @default(pending)
+  organizationId String        @map("organization_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
+  lease          Lease         @relation(fields: [leaseId], references: [id])
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  tenant         Tenant        @relation(fields: [tenantId], references: [id])
+  payments       Payment[]
+
+  @@index([tenantId])
+  @@index([leaseId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("billings")
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  billingId      String        @map("billing_id")
+  amount         Decimal       @db.Decimal(10, 2)
+  paymentMethod  PaymentMethod @map("payment_method")
+  status         PaymentStatus @default(pending)
+  organizationId String        @map("organization_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
+  billing        Billing       @relation(fields: [billingId], references: [id])
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+
+  @@index([billingId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Maintenance {
+  id                String            @id @default(uuid())
+  apartmentId       String            @map("apartment_id")
+  tenantId          String?           @map("tenant_id")
+  assignedManagerId String?           @map("assigned_manager_id")
+  status            MaintenanceStatus @default(open)
+  description       String
+  organizationId    String            @map("organization_id")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  deletedAt         DateTime?         @map("deleted_at")
+  apartment         Apartment         @relation(fields: [apartmentId], references: [id])
+  assignedManager   User?             @relation("AssignedManager", fields: [assignedManagerId], references: [id])
+  organization      Organization      @relation(fields: [organizationId], references: [id])
+  tenant            Tenant?           @relation(fields: [tenantId], references: [id])
+
+  @@index([apartmentId])
+  @@index([tenantId])
+  @@index([assignedManagerId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("maintenances")
+}
+
+model Document {
+  id             String       @id @default(uuid())
+  uploadedById   String       @map("uploaded_by_id")
+  apartmentId    String?      @map("apartment_id")
+  tenantId       String?      @map("tenant_id")
+  fileUrl        String       @map("file_url")
+  publicId       String?      @map("public_id")
+  fileName       String?      @map("file_name")
+  fileType       DocumentType @default(other) @map("file_type")
+  organizationId String       @map("organization_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  deletedAt      DateTime?    @map("deleted_at")
+  apartment      Apartment?   @relation(fields: [apartmentId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  tenant         Tenant?      @relation(fields: [tenantId], references: [id])
+  uploadedBy     User         @relation("UploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([uploadedById])
+  @@index([apartmentId])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("documents")
+}
+
+model Expense {
+  id             String          @id @default(uuid())
+  buildingId     String          @map("building_id")
+  amount         Decimal         @db.Decimal(10, 2)
+  category       ExpenseCategory
+  description    String?
+  organizationId String          @map("organization_id")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deletedAt      DateTime?       @map("deleted_at")
+  building       Building        @relation(fields: [buildingId], references: [id])
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+
+  @@index([buildingId])
+  @@index([organizationId])
+  @@index([category])
+  @@map("expenses")
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  userId         String?       @map("user_id")
+  organizationId String?       @map("organization_id")
+  action         AuditAction
+  entity         String
+  entityId       String?       @map("entity_id")
+  changes        Json?
+  ipAddress      String?       @map("ip_address")
+  userAgent      String?       @map("user_agent")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  user           User?         @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model PasswordResetOtp {
+  id        String     @id @default(uuid())
+  userId    String     @map("user_id")
+  email     String
+  otpHash   String     @map("otp_hash")
+  purpose   OtpPurpose @default(password_reset)
+  expiresAt DateTime   @map("expires_at")
+  usedAt    DateTime?  @map("used_at")
+  attempts  Int        @default(0)
+  createdAt DateTime   @default(now()) @map("created_at")
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@index([email])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_otps")
+}
 
 enum UserRole {
   superadmin
@@ -116,372 +462,4 @@ enum AuditAction {
 enum OtpPurpose {
   password_reset
   email_verification
-}
-
-// ─────────────────────────────────────────────
-// MODELS
-// ─────────────────────────────────────────────
-
-model Organization {
-  id             String       @id @default(uuid())
-  name           String
-  status         OrgStatus    @default(active)
-  subscriptionId String?      @unique @map("subscription_id")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  deletedAt      DateTime?    @map("deleted_at")
-
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  licenses       License[]
-  users          User[]
-  buildings      Building[]
-  apartments     Apartment[]
-  tenants        Tenant[]
-  leases         Lease[]
-  billings       Billing[]
-  payments       Payment[]
-  maintenances   Maintenance[]
-  documents      Document[]
-  expenses       Expense[]
-  auditLogs      AuditLog[]
-
-  @@index([status])
-  @@index([deletedAt])
-  @@map("organizations")
-}
-
-model Subscription {
-  id             String             @id @default(uuid())
-  organizationId String             @map("organization_id")
-  planName       String             @map("plan_name")
-  billingCycle   BillingCycle       @map("billing_cycle")
-  price          Decimal            @db.Decimal(10, 2)
-  startDate      DateTime           @map("start_date")
-  endDate        DateTime           @map("end_date")
-  status         SubscriptionStatus @default(active)
-  createdAt      DateTime           @default(now()) @map("created_at")
-  updatedAt      DateTime           @updatedAt @map("updated_at")
-  deletedAt      DateTime?          @map("deleted_at")
-
-  organization   Organization?
-  licenses       License[]
-
-  @@index([organizationId])
-  @@index([status])
-  @@map("subscriptions")
-}
-
-model License {
-  id              String       @id @default(uuid())
-  organizationId  String       @map("organization_id")
-  subscriptionId  String       @map("subscription_id")
-  maxUsers        Int          @map("max_users")
-  maxBuildings    Int          @map("max_buildings")
-  maxApartments   Int          @map("max_apartments")
-  features        Json         @default("{}")
-  expiresAt       DateTime     @map("expires_at")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
-  deletedAt       DateTime?    @map("deleted_at")
-
-  organization    Organization @relation(fields: [organizationId], references: [id])
-  subscription    Subscription @relation(fields: [subscriptionId], references: [id])
-
-  @@index([organizationId])
-  @@index([expiresAt])
-  @@map("licenses")
-}
-
-model User {
-  id                 String      @id @default(uuid())
-  name               String
-  email              String      @unique
-  password           String
-  role               UserRole    @default(tenant)
-  organizationId     String?     @map("organization_id")
-  status             UserStatus  @default(active)
-  mustChangePassword Boolean     @default(false) @map("must_change_password")
-  refreshToken       String?     @map("refresh_token")
-  createdAt          DateTime    @default(now()) @map("created_at")
-  updatedAt          DateTime    @updatedAt @map("updated_at")
-  deletedAt          DateTime?   @map("deleted_at")
-
-  organization       Organization?    @relation(fields: [organizationId], references: [id])
-  tenant             Tenant?
-  managerBuildings   ManagerBuilding[]
-  uploadedDocuments  Document[]       @relation("UploadedBy")
-  assignedMaintenance Maintenance[]   @relation("AssignedManager")
-  auditLogs          AuditLog[]
-  passwordResetOtps  PasswordResetOtp[]
-
-  @@index([email])
-  @@index([organizationId])
-  @@index([role])
-  @@index([deletedAt])
-  @@map("users")
-}
-
-model ManagerBuilding {
-  id         String   @id @default(uuid())
-  managerId  String   @map("manager_id")
-  buildingId String   @map("building_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  manager    User     @relation(fields: [managerId], references: [id])
-  building   Building @relation(fields: [buildingId], references: [id])
-
-  @@unique([managerId, buildingId])
-  @@index([managerId])
-  @@index([buildingId])
-  @@map("manager_buildings")
-}
-
-model Building {
-  id             String    @id @default(uuid())
-  name           String
-  address        String
-  organizationId String    @map("organization_id")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  deletedAt      DateTime? @map("deleted_at")
-
-  organization   Organization    @relation(fields: [organizationId], references: [id])
-  apartments     Apartment[]
-  managers       ManagerBuilding[]
-  expenses       Expense[]
-
-  @@index([organizationId])
-  @@index([deletedAt])
-  @@map("buildings")
-}
-
-model Apartment {
-  id             String          @id @default(uuid())
-  unitNumber     String          @map("unit_number")
-  status         ApartmentStatus @default(available)
-  buildingId     String          @map("building_id")
-  organizationId String          @map("organization_id")
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
-  deletedAt      DateTime?       @map("deleted_at")
-
-  building       Building        @relation(fields: [buildingId], references: [id])
-  organization   Organization    @relation(fields: [organizationId], references: [id])
-  tenants        Tenant[]
-  leases         Lease[]
-  maintenances   Maintenance[]
-  documents      Document[]
-
-  @@index([buildingId])
-  @@index([organizationId])
-  @@index([status])
-  @@index([deletedAt])
-  @@map("apartments")
-}
-
-model Tenant {
-  id             String    @id @default(uuid())
-  userId         String    @unique @map("user_id")
-  apartmentId    String?   @map("apartment_id")
-  organizationId String    @map("organization_id")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  deletedAt      DateTime? @map("deleted_at")
-
-  user           User        @relation(fields: [userId], references: [id])
-  apartment      Apartment?  @relation(fields: [apartmentId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  leases         Lease[]
-  billings       Billing[]
-  maintenances   Maintenance[]
-  documents      Document[]
-
-  @@index([userId])
-  @@index([apartmentId])
-  @@index([organizationId])
-  @@index([deletedAt])
-  @@map("tenants")
-}
-
-model Lease {
-  id             String      @id @default(uuid())
-  apartmentId    String      @map("apartment_id")
-  tenantId       String      @map("tenant_id")
-  startDate      DateTime    @map("start_date")
-  endDate        DateTime    @map("end_date")
-  rentAmount     Decimal     @map("rent_amount") @db.Decimal(10, 2)
-  status         LeaseStatus @default(pending)
-  organizationId String      @map("organization_id")
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
-  deletedAt      DateTime?   @map("deleted_at")
-
-  apartment      Apartment    @relation(fields: [apartmentId], references: [id])
-  tenant         Tenant       @relation(fields: [tenantId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  billings       Billing[]
-
-  @@index([apartmentId])
-  @@index([tenantId])
-  @@index([organizationId])
-  @@index([status])
-  @@index([deletedAt])
-  @@map("leases")
-}
-
-model Billing {
-  id             String        @id @default(uuid())
-  tenantId       String        @map("tenant_id")
-  leaseId        String        @map("lease_id")
-  amount         Decimal       @db.Decimal(10, 2)
-  dueDate        DateTime      @map("due_date")
-  status         BillingStatus @default(pending)
-  organizationId String        @map("organization_id")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  deletedAt      DateTime?     @map("deleted_at")
-
-  tenant         Tenant       @relation(fields: [tenantId], references: [id])
-  lease          Lease        @relation(fields: [leaseId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  payments       Payment[]
-
-  @@index([tenantId])
-  @@index([leaseId])
-  @@index([organizationId])
-  @@index([status])
-  @@index([dueDate])
-  @@map("billings")
-}
-
-model Payment {
-  id             String        @id @default(uuid())
-  billingId      String        @map("billing_id")
-  amount         Decimal       @db.Decimal(10, 2)
-  paymentMethod  PaymentMethod @map("payment_method")
-  status         PaymentStatus @default(pending)
-  organizationId String        @map("organization_id")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  deletedAt      DateTime?     @map("deleted_at")
-
-  billing        Billing      @relation(fields: [billingId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
-
-  @@index([billingId])
-  @@index([organizationId])
-  @@index([status])
-  @@map("payments")
-}
-
-model Maintenance {
-  id                String            @id @default(uuid())
-  apartmentId       String            @map("apartment_id")
-  tenantId          String?           @map("tenant_id")
-  assignedManagerId String?           @map("assigned_manager_id")
-  status            MaintenanceStatus @default(open)
-  description       String
-  organizationId    String            @map("organization_id")
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-  deletedAt         DateTime?         @map("deleted_at")
-
-  apartment         Apartment    @relation(fields: [apartmentId], references: [id])
-  tenant            Tenant?      @relation(fields: [tenantId], references: [id])
-  assignedManager   User?        @relation("AssignedManager", fields: [assignedManagerId], references: [id])
-  organization      Organization @relation(fields: [organizationId], references: [id])
-
-  @@index([apartmentId])
-  @@index([tenantId])
-  @@index([assignedManagerId])
-  @@index([organizationId])
-  @@index([status])
-  @@map("maintenances")
-}
-
-model Document {
-  id             String       @id @default(uuid())
-  uploadedById   String       @map("uploaded_by_id")
-  apartmentId    String?      @map("apartment_id")
-  tenantId       String?      @map("tenant_id")
-  fileUrl        String       @map("file_url")
-  publicId       String?      @map("public_id")
-  fileName       String?      @map("file_name")
-  fileType       DocumentType @default(other) @map("file_type")
-  organizationId String       @map("organization_id")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  deletedAt      DateTime?    @map("deleted_at")
-
-  uploadedBy     User         @relation("UploadedBy", fields: [uploadedById], references: [id])
-  apartment      Apartment?   @relation(fields: [apartmentId], references: [id])
-  tenant         Tenant?      @relation(fields: [tenantId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
-
-  @@index([uploadedById])
-  @@index([apartmentId])
-  @@index([tenantId])
-  @@index([organizationId])
-  @@map("documents")
-}
-
-model Expense {
-  id             String          @id @default(uuid())
-  buildingId     String          @map("building_id")
-  amount         Decimal         @db.Decimal(10, 2)
-  category       ExpenseCategory
-  description    String?
-  organizationId String          @map("organization_id")
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
-  deletedAt      DateTime?       @map("deleted_at")
-
-  building       Building     @relation(fields: [buildingId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
-
-  @@index([buildingId])
-  @@index([organizationId])
-  @@index([category])
-  @@map("expenses")
-}
-
-model AuditLog {
-  id             String      @id @default(uuid())
-  userId         String?     @map("user_id")
-  organizationId String?     @map("organization_id")
-  action         AuditAction
-  entity         String
-  entityId       String?     @map("entity_id")
-  changes        Json?
-  ipAddress      String?     @map("ip_address")
-  userAgent      String?     @map("user_agent")
-  createdAt      DateTime    @default(now()) @map("created_at")
-
-  user           User?         @relation(fields: [userId], references: [id])
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-
-  @@index([userId])
-  @@index([organizationId])
-  @@index([entity])
-  @@index([createdAt])
-  @@map("audit_logs")
-}
-
-model PasswordResetOtp {
-  id          String      @id @default(uuid())
-  userId      String      @map("user_id")
-  email       String
-  otpHash     String      @map("otp_hash")       // bcrypt hash of the OTP — never store plain
-  purpose     OtpPurpose  @default(password_reset)
-  expiresAt   DateTime    @map("expires_at")      // 10 minutes from creation
-  usedAt      DateTime?   @map("used_at")         // set when consumed — prevents replay
-  attempts    Int         @default(0)              // track wrong guesses
-  createdAt   DateTime    @default(now()) @map("created_at")
-
-  user        User        @relation(fields: [userId], references: [id])
-
-  @@index([email])
-  @@index([userId])
-  @@index([expiresAt])
-  @@map("password_reset_otps")
 }
