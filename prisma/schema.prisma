@@ -122,6 +122,11 @@ model Building {
   id             String            @id @default(uuid())
   name           String
   address        String
+  units          Int?
+  status         BuildingStatus?
+  yearBuilt      Int?
+  totalSqft      Int? @map("total_sqft")
+  description    String?
   organizationId String            @map("organization_id")
   createdAt      DateTime          @default(now()) @map("created_at")
   updatedAt      DateTime          @updatedAt @map("updated_at")
@@ -140,6 +145,12 @@ model Apartment {
   id             String          @id @default(uuid())
   unitNumber     String          @map("unit_number")
   status         ApartmentStatus @default(available)
+  bedrooms       Int?
+  bathrooms      Int?
+  sqft           Int?
+  rent           Int?
+  floor          Int?
+  description    String?
   buildingId     String          @map("building_id")
   organizationId String          @map("organization_id")
   createdAt      DateTime        @default(now()) @map("created_at")
@@ -462,4 +473,11 @@ enum AuditAction {
 enum OtpPurpose {
   password_reset
   email_verification
+}
+
+enum BuildingStatus {
+  active
+  inactive
+  under_construction
+  maintenance
 }

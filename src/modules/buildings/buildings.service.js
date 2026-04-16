@@ -23,13 +23,27 @@ const list = async (query, orgFilter, user) => {
       orderBy,
       include: {
         _count: { select: { apartments: true } },
+        apartments: { 
+          where: { 
+            status: 'occupied', 
+            deletedAt: null 
+          }, 
+          select: { id: true } 
+        },
         managers: { include: { manager: { select: { id: true, name: true, email: true } } } },
       },
     }),
-    prisma.building.count({ where }),
+    prisma.building.count({ where })
   ]);
-  return buildPaginatedResponse(data, total, page, limit);
-};
+    // Add occupancy rate
+    const buildingsWithRate = data.map(b => ({
+      ...b,
+      occupancyRate: b._count.apartments > 0 
+        ? ((b.apartments.length / b._count.apartments) * 100).toFixed(2) + '%'
+        : '0%'
+    }));
+    return buildPaginatedResponse(buildingsWithRate, total, page, limit);
+  };
 
 const getById = async (id, orgFilter, user) => {
   const where = { id, deletedAt: null, ...orgFilter };
@@ -37,13 +51,19 @@ const getById = async (id, orgFilter, user) => {
 
   const building = await prisma.building.findFirst({
     where,
-    include: {
-      apartments: { where: { deletedAt: null }, select: { id: true, unitNumber: true, status: true } },
-      managers: { include: { manager: { select: { id: true, name: true, email: true } } } },
-      _count: { select: { apartments: true, expenses: true } },
-    },
+      include: {
+        apartments: { where: { deletedAt: null }, select: { id: true, unitNumber: true, status: true } },
+        managers: { include: { manager: { select: { id: true, name: true, email: true } } } },
+        _count: { select: { apartments: true, expenses: true } },
+      },
   });
   if (!building) throw new AppError('Building not found.', 404, 'NOT_FOUND');
+  
+  // Add occupancy rate
+  const occupiedCount = building.apartments.filter(a => a.status === 'occupied').length;
+  building.occupancyRate = building._count.apartments > 0 
+    ? ((occupiedCount / building._count.apartments) * 100).toFixed(2) + '%'
+    : '0%';
   return building;
 };
 
