@@ -69,6 +69,15 @@ const create = async (data, organizationId) => {
 const update = async (id, data, orgFilter) => {
   const apt = await prisma.apartment.findFirst({ where: { id, deletedAt: null, ...orgFilter } });
   if (!apt) throw new AppError('Apartment not found.', 404, 'NOT_FOUND');
+  
+  // Handle building relation update
+  if (data.buildingId) {
+    const building = await prisma.building.findFirst({ where: { id: data.buildingId, deletedAt: null, organizationId: orgFilter.organizationId } });
+    if (!building) throw new AppError('Building not found.', 404, 'NOT_FOUND');
+    data.building = { connect: { id: data.buildingId } };
+    delete data.buildingId;
+  }
+  
   return prisma.apartment.update({ where: { id }, data });
 };
 
