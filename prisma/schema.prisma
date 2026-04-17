@@ -89,6 +89,10 @@ model User {
   deletedAt           DateTime?          @map("deleted_at")
   mustChangePassword  Boolean            @default(false) @map("must_change_password")
   phone               String?
+  gender              String?
+  emergencyName       String?
+  emergencyPhone      String?
+  emergencyRelationship String?
   auditLogs           AuditLog[]
   uploadedDocuments   Document[]         @relation("UploadedBy")
   assignedMaintenance Maintenance[]      @relation("AssignedManager")

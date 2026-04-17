@@ -73,7 +73,19 @@ const create = async (data, organizationId) => {
 
   const tenant = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
-      data: { name, email, password: hashed, role: 'tenant', organizationId, mustChangePassword: true },
+      data: { 
+        name, 
+        email, 
+        phone: data.phone, 
+        gender: data.gender,
+        emergencyName: data.emergencyName,
+        emergencyPhone: data.emergencyPhone,
+        emergencyRelationship: data.emergencyRelationship,
+        password: hashed, 
+        role: 'tenant', 
+        organizationId, 
+        mustChangePassword: true 
+      },
     });
     return tx.tenant.create({
       data: { userId: user.id, apartmentId: apartmentId || null, organizationId },
