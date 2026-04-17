@@ -13,7 +13,7 @@ const { getPaginationArgs, buildPaginatedResponse, getOrderByArgs } = require('.
 const logger = require('../../config/logger');
 
 const USER_SELECT = {
-  id: true, name: true, email: true, status: true, mustChangePassword: true,
+  id: true, name: true, email: true, phone: true, gender: true, emergencyName: true, emergencyPhone: true, emergencyRelationship: true, status: true, mustChangePassword: true,
 };
 
 // ─── List ─────────────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ const getById = async (id, orgFilter) => {
     include: {
       user:      { select: USER_SELECT },
       apartment: { select: { id: true, unitNumber: true, buildingId: true } },
-      leases:    { where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 1 },
+leases: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 1 },
     },
   });
   if (!item) throw new AppError('Tenant not found.', 404, 'NOT_FOUND');
@@ -102,12 +102,50 @@ const create = async (data, organizationId) => {
 
 // ─── Update ───────────────────────────────────────────────────────────────────
 
+/**
+ * Full tenant update: User personal fields + Tenant apartment assignment
+ * - Transaction ensures atomicity
+ * - Only updates provided fields
+ * - No password/email changes (use dedicated endpoints)
+ */
 const update = async (id, data, orgFilter) => {
-  await getById(id, orgFilter);
-  return prisma.tenant.update({
-    where: { id },
-    data: { apartmentId: data.apartmentId ?? undefined },
-    include: { user: { select: { id: true, name: true, email: true, mustChangePassword: true } } },
+  const tenant = await getById(id, orgFilter);
+  
+  // User personal data (only provided fields)
+  const userData = {
+    ...(data.name && { name: data.name }),
+    ...(data.phone && { phone: data.phone }),
+    ...(data.gender && { gender: data.gender }),
+    ...(data.emergencyName && { emergencyName: data.emergencyName }),
+    ...(data.emergencyPhone && { emergencyPhone: data.emergencyPhone }),
+    ...(data.emergencyRelationship && { emergencyRelationship: data.emergencyRelationship }),
+  };
+  
+  // Tenant apartment
+  const tenantData = data.apartmentId ? { apartmentId: data.apartmentId } : {};
+  
+  // Require at least one field
+  if (Object.keys(userData).length === 0 && Object.keys(tenantData).length === 0) {
+    throw new AppError('No valid fields provided for update.', 400, 'INVALID_REQUEST');
+  }
+  
+  return prisma.$transaction(async (tx) => {
+    if (Object.keys(userData).length > 0) {
+      await tx.user.update({
+        where: { id: tenant.userId },
+        data: userData,
+      });
+    }
+    
+    return tx.tenant.update({
+      where: { id },
+      data: tenantData,
+      include: {
+        user: { select: USER_SELECT },
+        apartment: { select: { id: true, unitNumber: true, buildingId: true } },
+        leases: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
   });
 };
 
@@ -119,3 +157,4 @@ const remove = async (id, orgFilter) => {
 };
 
 module.exports = { list, getById, create, update, remove };
+
