@@ -84,6 +84,16 @@ router.get('/:id', authorize('superadmin', 'admin', 'manager', 'tenant'), ctrl.g
  *               description: { type: string }
  *               tenantId: { type: string, format: uuid }
  *               assignedManagerId: { type: string, format: uuid }
+ *               category: { 
+ *                 type: string, 
+ *                 enum: [plumbing, electrical, appliance, structural, cleaning, pest_control, other],
+ *                 default: other 
+ *               }
+ *               priority: { 
+ *                 type: string, 
+ *                 enum: [low, medium, high, urgent],
+ *                 default: low 
+ *               }
  *     responses:
  *       201:
  *         description: Maintenance request created

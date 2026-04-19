@@ -191,10 +191,49 @@ async function main() {
       },
     });
 
+    // 15. Sample maintenances
+    await Promise.all([
+      prisma.maintenance.create({
+        data: {
+          apartmentId: apartments[0].id, // A101 - tenant occupied
+          tenantId: tenant.id,
+          category: 'plumbing',
+          priority: 'high',
+          description: 'Leaky faucet in kitchen - reported by tenant',
+          organizationId: org.id,
+          status: 'open',
+        },
+      }),
+      prisma.maintenance.create({
+        data: {
+          apartmentId: apartments[1].id, // A102 - available
+          assignedManagerId: manager.id,
+          category: 'electrical',
+          priority: 'medium',
+          description: 'Faulty light fixture in living room',
+          organizationId: org.id,
+          status: 'in_progress',
+        },
+      }),
+      prisma.maintenance.create({
+        data: {
+          apartmentId: apartments[2].id, // B201 - available
+          category: 'cleaning',
+          priority: 'low',
+          description: 'Post-turnover deep cleaning needed before new tenant',
+          organizationId: org.id,
+          status: 'resolved',
+        },
+      }),
+    ]);
+
+    console.log('   3 sample maintenances created');
+
     console.log(`✅  Demo org created: ${org.name}`);
     console.log(`   Admin:   admin@demoproperty.com   / Admin@123`);
     console.log(`   Manager: manager@demoproperty.com / Manager@123`);
     console.log(`   Tenant:  tenant@demoproperty.com  / Tenant@123`);
+    console.log(`   Maintenances: A101(plumbing), A102(electrical), B201(cleaning)`);
   } else {
     console.log('ℹ️   Demo org already exists — skipping');
   }

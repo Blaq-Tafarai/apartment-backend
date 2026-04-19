@@ -269,20 +269,22 @@ model Payment {
 }
 
 model Maintenance {
-  id                String            @id @default(uuid())
-  apartmentId       String            @map("apartment_id")
-  tenantId          String?           @map("tenant_id")
-  assignedManagerId String?           @map("assigned_manager_id")
-  status            MaintenanceStatus @default(open)
+  id                String              @id @default(uuid())
+  apartmentId       String              @map("apartment_id")
+  tenantId          String?             @map("tenant_id")
+  assignedManagerId String?             @map("assigned_manager_id")
+  status            MaintenanceStatus   @default(open)
+  category          MaintenanceCategory @default(other)
+  priority          MaintenancePriority @default(low)
   description       String
-  organizationId    String            @map("organization_id")
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-  deletedAt         DateTime?         @map("deleted_at")
-  apartment         Apartment         @relation(fields: [apartmentId], references: [id])
-  assignedManager   User?             @relation("AssignedManager", fields: [assignedManagerId], references: [id])
-  organization      Organization      @relation(fields: [organizationId], references: [id])
-  tenant            Tenant?           @relation(fields: [tenantId], references: [id])
+  organizationId    String              @map("organization_id")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  deletedAt         DateTime?           @map("deleted_at")
+  apartment         Apartment           @relation(fields: [apartmentId], references: [id])
+  assignedManager   User?               @relation("AssignedManager", fields: [assignedManagerId], references: [id])
+  organization      Organization        @relation(fields: [organizationId], references: [id])
+  tenant            Tenant?             @relation(fields: [tenantId], references: [id])
 
   @@index([apartmentId])
   @@index([tenantId])
@@ -448,6 +450,23 @@ enum MaintenanceStatus {
   in_progress
   resolved
   closed
+}
+
+enum MaintenanceCategory {
+  plumbing
+  electrical
+  appliance
+  structural
+  cleaning
+  pest_control
+  other
+}
+
+enum MaintenancePriority {
+  low
+  medium
+  high
+  urgent
 }
 
 enum ExpenseCategory {

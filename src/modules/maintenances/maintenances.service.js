@@ -41,16 +41,30 @@ const list = async (query, orgFilter, user) => {
 };
 
 const getById = async (id, orgFilter) => {
+  // Validate UUID format (standard UUIDv4 regex)
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(id)) {
+    throw new AppError('Invalid maintenance request ID format.', 400, 'INVALID_ID');
+  }
+
+  const where = { id, ...orgFilter, deletedAt: null };
+
+  // Log for debugging (remove in production if needed)
+  console.log('Maintenance getById query:', { id, orgFilterKeys: Object.keys(orgFilter || {}) });
+
   const item = await prisma.maintenance.findFirst({
-    where: { id, ...orgFilter, deletedAt: null },
+    where,
     include,
   });
-  if (!item) throw new AppError('Maintenance request not found.', 404, 'NOT_FOUND');
+  if (!item) {
+    console.log('Maintenance not found with criteria:', where); // Debug log
+    throw new AppError('Maintenance request not found.', 404, 'NOT_FOUND');
+  }
   return item;
 };
 
 const create = async (data, organizationId, user) => {
-  const { apartmentId, description, assignedManagerId } = data;
+  const { apartmentId, description, assignedManagerId, category, priority } = data;
 
   let tenantId = data.tenantId || null;
 
@@ -65,6 +79,8 @@ const create = async (data, organizationId, user) => {
       apartmentId,
       tenantId,
       assignedManagerId: assignedManagerId || null,
+      category: category || 'other',
+      priority: priority || 'low',
       description,
       status: 'open',
       organizationId,
@@ -75,13 +91,15 @@ const create = async (data, organizationId, user) => {
 
 const update = async (id, data, orgFilter) => {
   await getById(id, orgFilter);
-  const { status, description, assignedManagerId } = data;
+  const { status, description, assignedManagerId, category, priority } = data;
   return prisma.maintenance.update({
     where: { id },
     data: {
       ...(status && { status }),
       ...(description && { description }),
       ...(assignedManagerId !== undefined && { assignedManagerId }),
+      ...(category && { category }),
+      ...(priority && { priority }),
     },
     include,
   });
