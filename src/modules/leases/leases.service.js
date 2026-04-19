@@ -36,7 +36,7 @@ const getById = async (id, orgFilter) => {
 };
 
 const create = async (data, organizationId) => {
-  const { apartmentId, tenantId, startDate, endDate, rentAmount } = data;
+  const { apartmentId, tenantId, startDate, endDate, rentAmount, securityDeposit, terms, status } = data;
 
   // Check for active lease on the apartment
   const existing = await prisma.lease.findFirst({
@@ -51,7 +51,9 @@ const create = async (data, organizationId) => {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         rentAmount,
-        status: data.status || 'active',
+        securityDeposit,
+        terms,
+        status: status || 'active',
       },
       include,
     });
@@ -65,7 +67,7 @@ const create = async (data, organizationId) => {
 
 const update = async (id, data, orgFilter) => {
   await getById(id, orgFilter);
-  const { startDate, endDate, rentAmount, status } = data;
+  const { startDate, endDate, rentAmount, status, securityDeposit, terms } = data;
   return prisma.lease.update({
     where: { id },
     data: {
@@ -73,6 +75,8 @@ const update = async (id, data, orgFilter) => {
       ...(endDate && { endDate: new Date(endDate) }),
       ...(rentAmount !== undefined && { rentAmount }),
       ...(status && { status }),
+      ...(securityDeposit !== undefined && { securityDeposit }),
+      ...(terms && { terms }),
     },
     include,
   });

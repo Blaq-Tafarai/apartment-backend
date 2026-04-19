@@ -205,6 +205,8 @@ model Lease {
   startDate      DateTime     @map("start_date")
   endDate        DateTime     @map("end_date")
   rentAmount     Decimal      @map("rent_amount") @db.Decimal(10, 2)
+  securityDeposit Decimal?     @map("security_deposit") @db.Decimal(10, 2)
+  terms           String?      @map("terms")
   status         LeaseStatus  @default(pending)
   organizationId String       @map("organization_id")
   createdAt      DateTime     @default(now()) @map("created_at")
