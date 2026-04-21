@@ -91,7 +91,10 @@ const create = async (data, organizationId, user) => {
 
 const update = async (id, data, orgFilter) => {
   await getById(id, orgFilter);
-  const { status, description, assignedManagerId, category, priority } = data;
+  let { status, description, assignedManagerId, category, priority, completedAt, estimatedCost, actualCost, note } = data;
+  if (completedAt) {
+    status = 'resolved';
+  }
   return prisma.maintenance.update({
     where: { id },
     data: {
@@ -100,6 +103,10 @@ const update = async (id, data, orgFilter) => {
       ...(assignedManagerId !== undefined && { assignedManagerId }),
       ...(category && { category }),
       ...(priority && { priority }),
+      ...(completedAt && { completedAt: new Date(completedAt) }),
+      ...(estimatedCost !== undefined && { estimatedCost }),
+      ...(actualCost !== undefined && { actualCost }),
+      ...(note !== undefined && { note }),
     },
     include,
   });

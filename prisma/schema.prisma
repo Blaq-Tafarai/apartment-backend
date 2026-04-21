@@ -281,6 +281,10 @@ model Maintenance {
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
   deletedAt         DateTime?           @map("deleted_at")
+  completedAt       DateTime?           @map("completed_at")
+  estimatedCost     Decimal?            @db.Decimal(10, 2) @map("estimated_cost")
+  actualCost        Decimal?            @db.Decimal(10, 2) @map("actual_cost")
+  note              String?
   apartment         Apartment           @relation(fields: [apartmentId], references: [id])
   assignedManager   User?               @relation("AssignedManager", fields: [assignedManagerId], references: [id])
   organization      Organization        @relation(fields: [organizationId], references: [id])

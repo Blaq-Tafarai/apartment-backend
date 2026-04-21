@@ -12,7 +12,14 @@ const create = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 const update = async (req, res, next) => {
-  try { res.json({ success: true, data: await svc.update(req.params.id, req.body, req.orgFilter) }); } catch (e) { next(e); }
+  try {
+    const mappedData = {
+      ...req.body,
+      assignedManagerId: req.body.assignedTo || req.body.assignedManagerId,
+      note: req.body.notes || req.body.note
+    };
+    res.json({ success: true, data: await svc.update(req.params.id, mappedData, req.orgFilter) });
+  } catch (e) { next(e); }
 };
 const remove = async (req, res, next) => {
   try {

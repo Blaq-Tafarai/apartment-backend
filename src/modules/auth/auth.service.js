@@ -112,8 +112,7 @@ const login = async ({ email, password }, res) => {
   const { password: _, ...safeUser } = user;
   return {
     user: safeUser,
-    accessToken,
-    mustChangePassword: safeUser.mustChangePassword,
+    accessToken
     // refreshToken intentionally NOT in body — lives in HTTP-only cookie only
   };
 };
