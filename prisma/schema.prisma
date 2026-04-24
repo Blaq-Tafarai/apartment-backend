@@ -232,6 +232,8 @@ model Billing {
   amount         Decimal       @db.Decimal(10, 2)
   dueDate        DateTime      @map("due_date")
   status         BillingStatus @default(pending)
+  description    String?
+  issueDate      DateTime?
   organizationId String        @map("organization_id")
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
@@ -329,6 +331,7 @@ model Expense {
   amount         Decimal         @db.Decimal(10, 2)
   category       ExpenseCategory
   description    String?
+  paymentMethod  PaymentMethod?  @map("payment_method")
   organizationId String          @map("organization_id")
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")

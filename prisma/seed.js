@@ -227,8 +227,6 @@ async function main() {
       }),
     ]);
 
-    console.log('   3 sample maintenances created');
-
     console.log(`✅  Demo org created: ${org.name}`);
     console.log(`   Admin:   admin@demoproperty.com   / Admin@123`);
     console.log(`   Manager: manager@demoproperty.com / Manager@123`);
@@ -236,6 +234,71 @@ async function main() {
     console.log(`   Maintenances: A101(plumbing), A102(electrical), B201(cleaning)`);
   } else {
     console.log('ℹ️   Demo org already exists — skipping');
+  }
+
+  // ── Ensure demo expenses exist (idempotent) ───────────────────────────────
+  const demoOrg = await prisma.organization.findFirst({
+    where: { name: 'Demo Property Co.' },
+  });
+
+  if (demoOrg) {
+    const demoBuilding = await prisma.building.findFirst({
+      where: { name: 'Sunset Towers', organizationId: demoOrg.id },
+    });
+
+    if (demoBuilding) {
+      const existingExpenses = await prisma.expense.findFirst({
+        where: { buildingId: demoBuilding.id },
+      });
+
+      if (!existingExpenses) {
+        await Promise.all([
+          prisma.expense.create({
+            data: {
+              buildingId: demoBuilding.id,
+              amount: 350.00,
+              category: 'repairs',
+              description: 'Emergency plumbing repair - burst pipe in basement',
+              paymentMethod: 'bank_transfer',
+              organizationId: demoOrg.id,
+            },
+          }),
+          prisma.expense.create({
+            data: {
+              buildingId: demoBuilding.id,
+              amount: 1200.00,
+              category: 'utilities',
+              description: 'Monthly electricity bill for common areas',
+              paymentMethod: 'mobile_money',
+              organizationId: demoOrg.id,
+            },
+          }),
+          prisma.expense.create({
+            data: {
+              buildingId: demoBuilding.id,
+              amount: 500.00,
+              category: 'security',
+              description: 'Quarterly security system maintenance',
+              paymentMethod: 'card',
+              organizationId: demoOrg.id,
+            },
+          }),
+          prisma.expense.create({
+            data: {
+              buildingId: demoBuilding.id,
+              amount: 200.00,
+              category: 'cleaning',
+              description: 'Deep cleaning of lobby and hallways',
+              paymentMethod: 'cash',
+              organizationId: demoOrg.id,
+            },
+          }),
+        ]);
+        console.log('   4 sample expenses created');
+      } else {
+        console.log('ℹ️   Demo expenses already exist — skipping');
+      }
+    }
   }
 
   console.log('\n🎉  Seed complete!\n');
@@ -255,3 +318,4 @@ main()
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
+

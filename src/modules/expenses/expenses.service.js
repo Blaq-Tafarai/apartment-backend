@@ -41,22 +41,23 @@ const getById = async (id, orgFilter) => {
 };
 
 const create = async (data, organizationId) => {
-  const { buildingId, amount, category, description } = data;
+  const { buildingId, amount, category, description, paymentMethod } = data;
   return prisma.expense.create({
-    data: { buildingId, amount, category, description: description || null, organizationId },
+    data: { buildingId, amount, category, description: description || null, paymentMethod: paymentMethod || null, organizationId },
     include,
   });
 };
 
 const update = async (id, data, orgFilter) => {
   await getById(id, orgFilter);
-  const { amount, category, description } = data;
+  const { amount, category, description, paymentMethod } = data;
   return prisma.expense.update({
     where: { id },
     data: {
       ...(amount !== undefined && { amount }),
       ...(category && { category }),
       ...(description !== undefined && { description }),
+      ...(paymentMethod !== undefined && { paymentMethod: paymentMethod || null }),
     },
     include,
   });

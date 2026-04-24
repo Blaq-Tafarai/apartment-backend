@@ -4,7 +4,22 @@ const { getPaginationArgs, buildPaginatedResponse, getOrderByArgs } = require('.
 
 const include = {
   tenant: { include: { user: { select: { id: true, name: true, email: true } } } },
-  lease: { select: { id: true, rentAmount: true, status: true } },
+  lease: { 
+    select: {
+      id: true,
+      rentAmount: true,
+      status: true,
+      apartment: { 
+        select: { 
+          id: true, 
+          unitNumber: true, 
+          status: true, 
+          rent: true, 
+          building: { select: { id: true, name: true } }
+        } 
+      }
+    }
+  },
   payments: { where: { deletedAt: null } },
 };
 
@@ -36,22 +51,33 @@ const getById = async (id, orgFilter) => {
 };
 
 const create = async (data, organizationId) => {
-  const { tenantId, leaseId, amount, dueDate } = data;
+  const { tenantId, leaseId, amount, dueDate, description, issueDate } = data;
   return prisma.billing.create({
-    data: { tenantId, leaseId, amount, dueDate: new Date(dueDate), status: data.status || 'pending', organizationId },
+    data: { 
+      tenantId, 
+      leaseId, 
+      amount, 
+      dueDate: new Date(dueDate), 
+      description,
+      issueDate: issueDate ? new Date(issueDate) : undefined,
+      status: data.status || 'pending', 
+      organizationId 
+    },
     include,
   });
 };
 
 const update = async (id, data, orgFilter) => {
   await getById(id, orgFilter);
-  const { amount, dueDate, status } = data;
+  const { amount, dueDate, status, description, issueDate } = data;
   return prisma.billing.update({
     where: { id },
     data: {
       ...(amount !== undefined && { amount }),
       ...(dueDate && { dueDate: new Date(dueDate) }),
       ...(status && { status }),
+      ...(description !== undefined && { description }),
+      ...(issueDate && { issueDate: new Date(issueDate) }),
     },
     include,
   });

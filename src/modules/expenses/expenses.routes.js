@@ -64,6 +64,7 @@ router.get('/:id', ctrl.getById);
  *               amount: { type: number }
  *               category: { type: string, enum: [repairs, utilities, cleaning, security, insurance, taxes, other] }
  *               description: { type: string }
+ *               paymentMethod: { type: string, enum: [cash, bank_transfer, card, mobile_money, cheque] }
  *     responses:
  *       201:
  *         description: Expense created
