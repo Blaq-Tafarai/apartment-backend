@@ -6,7 +6,19 @@ const include = {
   billing: {
     include: {
       tenant: { include: { user: { select: { id: true, name: true, email: true } } } },
-      lease: { select: { id: true, rentAmount: true } },
+      lease: {
+        select: {
+          id: true,
+          rentAmount: true,
+          apartment: {
+            select: {
+              id: true,
+              unitNumber: true,
+              building: { select: { id: true, name: true, address: true } },
+            },
+          },
+        },
+      },
     },
   },
 };

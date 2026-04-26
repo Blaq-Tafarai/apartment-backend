@@ -179,8 +179,8 @@ async function main() {
       },
     });
 
-    // 14. Pending billing record for this month
-    await prisma.billing.create({
+    // 14. Billing records
+    const billing1 = await prisma.billing.create({
       data: {
         tenantId: tenant.id,
         leaseId: lease.id,
@@ -191,7 +191,35 @@ async function main() {
       },
     });
 
-    // 15. Sample maintenances
+    // 15. Payment for first billing (mark as paid)
+    await prisma.payment.create({
+      data: {
+        billingId: billing1.id,
+        amount: 1200.00,
+        paymentMethod: 'bank_transfer',
+        status: 'completed',
+        organizationId: org.id,
+      },
+    });
+    await prisma.billing.update({
+      where: { id: billing1.id },
+      data: { status: 'paid' },
+    });
+
+    // 16. Extra pending billing for testing payment creation
+    await prisma.billing.create({
+      data: {
+        tenantId: tenant.id,
+        leaseId: lease.id,
+        amount: 1200.00,
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        status: 'pending',
+        description: 'February Rent',
+        organizationId: org.id,
+      },
+    });
+
+    // 17. Sample maintenances
     await Promise.all([
       prisma.maintenance.create({
         data: {
@@ -298,6 +326,36 @@ async function main() {
       } else {
         console.log('ℹ️   Demo expenses already exist — skipping');
       }
+    }
+
+    // ── Ensure demo payments exist (idempotent) ─────────────────────────────
+    const existingPayments = await prisma.payment.findFirst({
+      where: { organizationId: demoOrg.id },
+    });
+
+    if (!existingPayments) {
+      const billings = await prisma.billing.findMany({
+        where: { organizationId: demoOrg.id, status: 'pending' },
+      });
+
+      if (billings.length > 0) {
+        await prisma.payment.create({
+          data: {
+            billingId: billings[0].id,
+            amount: billings[0].amount,
+            paymentMethod: 'bank_transfer',
+            status: 'completed',
+            organizationId: demoOrg.id,
+          },
+        });
+        await prisma.billing.update({
+          where: { id: billings[0].id },
+          data: { status: 'paid' },
+        });
+        console.log('   Sample payment created');
+      }
+    } else {
+      console.log('ℹ️   Demo payments already exist — skipping');
     }
   }
 
