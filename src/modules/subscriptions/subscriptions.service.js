@@ -22,7 +22,14 @@ const getById = async (id) => {
   return sub;
 };
 
-const create = async (data) => prisma.subscription.create({ data });
+const create = async (data) => {
+  const subscription = await prisma.subscription.create({ data });
+  await prisma.organization.update({
+    where: { id: data.organizationId },
+    data: { subscriptionId: subscription.id },
+  });
+  return subscription;
+};
 
 const update = async (id, data) => {
   await getById(id);
